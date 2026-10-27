@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0f3d2e">
+  <title>Ride Board Demo</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="demo-banner" role="note">DEMO with invented data. Not connected to any club system.</div>
+
+  <header class="app-header">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">RB</span>
+      <h1>Ride Board <span class="brand-sub">Demo</span></h1>
+    </div>
+    <nav class="view-toggle" role="tablist" aria-label="Choose view">
+      <button type="button" role="tab" id="tab-request" aria-controls="view-request" data-view="request">Request</button>
+      <button type="button" role="tab" id="tab-driver" aria-controls="view-driver" data-view="driver">Driver</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- REQUEST VIEW -->
+    <section id="view-request" class="view" role="tabpanel" aria-labelledby="tab-request">
+      <div class="card">
+        <h2>New ride request</h2>
+        <div class="type-toggle" role="radiogroup" aria-label="Request type">
+          <button type="button" role="radio" data-type="h2b">H2B worker ride</button>
+          <button type="button" role="radio" data-type="stadium">Stadium pickup</button>
+        </div>
+
+        <form id="form-h2b" class="req-form" novalidate>
+          <label class="field">
+            <span>Pickup location</span>
+            <select name="pickup" required></select>
+          </label>
+          <div class="field">
+            <span id="h2b-count-label">Head count</span>
+            <div class="stepper" data-stepper>
+              <button type="button" data-step="-1" aria-label="Fewer people">−</button>
+              <input type="number" name="headCount" inputmode="numeric" min="1" max="60" value="4" aria-labelledby="h2b-count-label">
+              <button type="button" data-step="1" aria-label="More people">+</button>
+            </div>
+          </div>
+          <label class="field">
+            <span>Note <em>(optional)</em></span>
+            <input type="text" name="note" maxlength="80" placeholder="e.g. Bring the bag cart" autocomplete="off">
+          </label>
+          <p class="hint">Head counts only. Do not enter names.</p>
+          <button type="submit" class="btn btn-primary btn-block">Add to board</button>
+        </form>
+
+        <form id="form-stadium" class="req-form" novalidate hidden>
+          <label class="field">
+            <span>Event</span>
+            <select name="event" required></select>
+          </label>
+          <fieldset class="field">
+            <legend>Direction</legend>
+            <div class="seg">
+              <label><input type="radio" name="direction" value="dropoff" checked><span>Drop off to stadium</span></label>
+              <label><input type="radio" name="direction" value="pickup"><span>Pickup after game</span></label>
+            </div>
+          </fieldset>
+          <div class="field">
+            <span id="st-count-label">Head count</span>
+            <div class="stepper" data-stepper>
+              <button type="button" data-step="-1" aria-label="Fewer people">−</button>
+              <input type="number" name="headCount" inputmode="numeric" min="1" max="60" value="10" aria-labelledby="st-count-label">
+              <button type="button" data-step="1" aria-label="More people">+</button>
+            </div>
+          </div>
+          <fieldset class="field">
+            <legend>Vehicle</legend>
+            <div class="seg">
+              <label><input type="radio" name="vehicle" value="Van 1" checked><span>Van 1</span></label>
+              <label><input type="radio" name="vehicle" value="Van 2"><span>Van 2</span></label>
+            </div>
+          </fieldset>
+          <div class="field">
+            <span id="st-eta-label">ETA (minutes)</span>
+            <div class="stepper" data-stepper>
+              <button type="button" data-step="-5" aria-label="Five minutes sooner">−5</button>
+              <input type="number" name="eta" inputmode="numeric" min="0" max="240" value="15" aria-labelledby="st-eta-label">
+              <button type="button" data-step="5" aria-label="Five minutes later">+5</button>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary btn-block">Add to board</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h2>Board</h2>
+          <span class="muted" id="board-count"></span>
+        </div>
+        <ul class="board" id="board-list"></ul>
+      </div>
+    </section>
+
+    <!-- DRIVER VIEW -->
+    <section id="view-driver" class="view" role="tabpanel" aria-labelledby="tab-driver" hidden>
+      <div class="card stadium-panel" aria-labelledby="stadium-title">
+        <div class="card-head">
+          <h2 id="stadium-title">Stadium headcount</h2>
+          <label class="inline-select">
+            <span class="sr-only">Current event</span>
+            <select id="current-event"></select>
+          </label>
+        </div>
+        <div class="left-big">
+          <div class="left-num" id="left-total">0</div>
+          <div class="left-label">left to pick up</div>
+        </div>
+        <div class="stat-row">
+          <div class="stat"><div class="stat-num" id="drop-total">0</div><div class="stat-label">Dropped off</div></div>
+          <div class="stat"><div class="stat-num" id="pick-total">0</div><div class="stat-label">Picked up</div></div>
+        </div>
+        <div class="vehicle-grid" id="vehicle-grid"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h2>Open requests</h2>
+          <label class="inline-select">
+            <span>I am</span>
+            <select id="driver-id">
+              <option>Driver A</option>
+              <option>Driver B</option>
+              <option>Driver C</option>
+            </select>
+          </label>
+        </div>
+        <ul class="trips" id="open-list"></ul>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h2>Completed trips</h2>
+          <span class="muted" id="done-summary"></span>
+        </div>
+        <ul class="done" id="done-list"></ul>
+      </div>
+    </section>
+
+    <section class="card about" aria-labelledby="about-title">
+      <details>
+        <summary><h2 id="about-title">About this demo</h2></summary>
+        <p>This is a free prototype that shows what a custom app could do for the transportation team. It runs entirely in this browser. All names, places, events and numbers are invented.</p>
+        <p><strong>The full version adds:</strong></p>
+        <ul>
+          <li>Department tabs: transportation, food and beverage, events, and sport</li>
+          <li>Offline use with automatic sync when the connection returns</li>
+          <li>Manager logins with approvals and ride assignment to drivers</li>
+          <li>Beverage orders</li>
+          <li>Tables</li>
+          <li>Contacts</li>
+        </ul>
+      </details>
+      <button type="button" class="btn btn-ghost btn-block" id="reset-btn">Reset demo</button>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
