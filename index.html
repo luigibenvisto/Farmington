@@ -15,6 +15,7 @@
       <span class="brand-mark" aria-hidden="true">FA</span>
       <h1>Farmington <span class="brand-sub">App</span></h1>
     </div>
+    <span class="sync-status" id="sync-status" role="status" aria-live="polite">Starting...</span>
     <nav class="view-toggle" role="tablist" aria-label="Choose view">
       <button type="button" role="tab" id="tab-request" aria-controls="view-request" data-view="request">Request</button>
       <button type="button" role="tab" id="tab-driver" aria-controls="view-driver" data-view="driver">Driver</button>
@@ -135,7 +136,7 @@
     <section class="card about" aria-labelledby="about-title">
       <details>
         <summary><h2 id="about-title">About this demo</h2></summary>
-        <p>This is a free prototype that shows what a custom app could do for the transportation team. It runs entirely in this browser. All names, places, events and numbers are invented.</p>
+        <p>This is a free prototype that shows what a custom app could do for the transportation team. All drivers, events and numbers are invented. When live sync is set up, phones share this invented data through a free test database; otherwise it stays in this browser.</p>
         <p><strong>The full version adds:</strong></p>
         <ul>
           <li>Department tabs: transportation, food and beverage, events, and sport</li>
@@ -152,6 +153,11 @@
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
+  <!-- Order matters: settings, shared rules, the two stores, then the screens. -->
+  <script src="firebase-config.js"></script>
+  <script src="logic.js"></script>
+  <script src="store-local.js"></script>
+  <script src="store-firebase.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

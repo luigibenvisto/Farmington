@@ -273,3 +273,16 @@ ul.board, ul.trips, ul.done { list-style: none; margin: 0; padding: 0; display: 
 .pick-row { flex-wrap: wrap; }
 .pick-row .stepper { flex: 1 1 100%; }
 .pick-row .btn { flex: 1 1 100%; min-width: 0; }
+
+/* Sync status label in the header */
+.sync-status {
+  order: 3; flex: 1 1 100%;
+  font-size: 13px; font-weight: 700; padding: 4px 10px; border-radius: 999px;
+  background: rgba(255,255,255,.14); color: #fff; text-align: center;
+}
+.sync-status.live::before { content: "● "; color: #6fe39a; }
+.sync-status.local { background: #e9ecea; color: #1b2a22; }
+.sync-status.offline { background: var(--wait-bg); color: var(--wait); }
+.sync-status.broken { background: #ffe1de; color: var(--danger); }
+ul.item-log { list-style: none; padding: 0; margin: 6px 0 0; }
+ul.item-log li { margin: 2px 0; }
