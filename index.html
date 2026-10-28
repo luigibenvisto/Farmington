@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#0f3d2e">
-  <title>Ride Board Demo</title>
+  <title>Farmington App</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -12,8 +12,8 @@
 
   <header class="app-header">
     <div class="brand">
-      <span class="brand-mark" aria-hidden="true">RB</span>
-      <h1>Ride Board <span class="brand-sub">Demo</span></h1>
+      <span class="brand-mark" aria-hidden="true">FA</span>
+      <h1>Farmington <span class="brand-sub">App</span></h1>
     </div>
     <nav class="view-toggle" role="tablist" aria-label="Choose view">
       <button type="button" role="tab" id="tab-request" aria-controls="view-request" data-view="request">Request</button>
@@ -22,22 +22,18 @@
   </header>
 
   <main>
-    <!-- REQUEST VIEW -->
+    <!-- REQUEST VIEW (members and workers) -->
     <section id="view-request" class="view" role="tabpanel" aria-labelledby="tab-request">
       <div class="card">
         <h2>New ride request</h2>
         <div class="type-toggle" role="radiogroup" aria-label="Request type">
-          <button type="button" role="radio" data-type="h2b">H2B worker ride</button>
-          <button type="button" role="radio" data-type="stadium">Stadium pickup</button>
+          <button type="button" role="radio" data-type="h2b">H2B ride</button>
+          <button type="button" role="radio" data-type="game">Game ride</button>
         </div>
 
         <form id="form-h2b" class="req-form" novalidate>
-          <label class="field">
-            <span>Pickup location</span>
-            <select name="pickup" required></select>
-          </label>
           <div class="field">
-            <span id="h2b-count-label">Head count</span>
+            <span id="h2b-count-label">How many people</span>
             <div class="stepper" data-stepper>
               <button type="button" data-step="-1" aria-label="Fewer people">−</button>
               <input type="number" name="headCount" inputmode="numeric" min="1" max="60" value="4" aria-labelledby="h2b-count-label">
@@ -48,65 +44,64 @@
             <span>Note <em>(optional)</em></span>
             <input type="text" name="note" maxlength="80" placeholder="e.g. Bring the bag cart" autocomplete="off">
           </label>
-          <p class="hint">Head counts only. Do not enter names.</p>
-          <button type="submit" class="btn btn-primary btn-block">Add to board</button>
+          <p class="hint">Numbers only. Do not enter names.</p>
+          <button type="submit" class="btn btn-primary btn-block">Send to drivers</button>
         </form>
 
-        <form id="form-stadium" class="req-form" novalidate hidden>
+        <form id="form-game" class="req-form" novalidate hidden>
+          <div class="place">
+            <div class="place-label">Game pickup spot</div>
+            <div class="place-name">Alderman Road and McCormick Road crossroad</div>
+            <a class="place-link" href="https://www.google.com/maps/search/?api=1&amp;query=Alderman+Rd+%26+McCormick+Rd+Charlottesville+VA" target="_blank" rel="noopener">Open map</a>
+          </div>
           <label class="field">
-            <span>Event</span>
+            <span>Game</span>
             <select name="event" required></select>
           </label>
           <fieldset class="field">
             <legend>Direction</legend>
             <div class="seg">
-              <label><input type="radio" name="direction" value="dropoff" checked><span>Drop off to stadium</span></label>
-              <label><input type="radio" name="direction" value="pickup"><span>Pickup after game</span></label>
+              <label><input type="radio" name="direction" value="dropoff" checked><span>To the stadium</span></label>
+              <label><input type="radio" name="direction" value="pickup"><span>Back after game</span></label>
             </div>
           </fieldset>
           <div class="field">
-            <span id="st-count-label">Head count</span>
+            <span id="st-count-label">How many people</span>
             <div class="stepper" data-stepper>
               <button type="button" data-step="-1" aria-label="Fewer people">−</button>
-              <input type="number" name="headCount" inputmode="numeric" min="1" max="60" value="10" aria-labelledby="st-count-label">
+              <input type="number" name="headCount" inputmode="numeric" min="1" max="60" value="6" aria-labelledby="st-count-label">
               <button type="button" data-step="1" aria-label="More people">+</button>
             </div>
           </div>
-          <fieldset class="field">
-            <legend>Vehicle</legend>
-            <div class="seg">
-              <label><input type="radio" name="vehicle" value="Van 1" checked><span>Van 1</span></label>
-              <label><input type="radio" name="vehicle" value="Van 2"><span>Van 2</span></label>
-            </div>
-          </fieldset>
-          <div class="field">
-            <span id="st-eta-label">ETA (minutes)</span>
-            <div class="stepper" data-stepper>
-              <button type="button" data-step="-5" aria-label="Five minutes sooner">−5</button>
-              <input type="number" name="eta" inputmode="numeric" min="0" max="240" value="15" aria-labelledby="st-eta-label">
-              <button type="button" data-step="5" aria-label="Five minutes later">+5</button>
-            </div>
-          </div>
-          <button type="submit" class="btn btn-primary btn-block">Add to board</button>
+          <button type="submit" class="btn btn-primary btn-block">Send to drivers</button>
         </form>
-      </div>
-
-      <div class="card">
-        <div class="card-head">
-          <h2>Board</h2>
-          <span class="muted" id="board-count"></span>
-        </div>
-        <ul class="board" id="board-list"></ul>
+        <p class="sent" id="sent-note" hidden></p>
       </div>
     </section>
 
     <!-- DRIVER VIEW -->
     <section id="view-driver" class="view" role="tabpanel" aria-labelledby="tab-driver" hidden>
-      <div class="card stadium-panel" aria-labelledby="stadium-title">
+      <div class="card">
         <div class="card-head">
-          <h2 id="stadium-title">Stadium headcount</h2>
+          <div class="type-toggle driver-toggle" role="radiogroup" aria-label="List">
+            <button type="button" role="radio" data-list="h2b">H2B</button>
+            <button type="button" role="radio" data-list="game">Game</button>
+          </div>
           <label class="inline-select">
-            <span class="sr-only">Current event</span>
+            <span>I am</span>
+            <select id="driver-id">
+              <option>Driver A</option>
+              <option>Driver B</option>
+            </select>
+          </label>
+        </div>
+      </div>
+
+      <div class="card stadium-panel" id="game-panel" aria-labelledby="stadium-title">
+        <div class="card-head">
+          <h2 id="stadium-title">Game headcount</h2>
+          <label class="inline-select">
+            <span class="sr-only">Current game</span>
             <select id="current-event"></select>
           </label>
         </div>
@@ -118,30 +113,22 @@
           <div class="stat"><div class="stat-num" id="drop-total">0</div><div class="stat-label">Dropped off</div></div>
           <div class="stat"><div class="stat-num" id="pick-total">0</div><div class="stat-label">Picked up</div></div>
         </div>
-        <div class="vehicle-grid" id="vehicle-grid"></div>
+        <p class="place-inline">Pickup spot: Alderman Road and McCormick Road crossroad. <a class="place-link" href="https://www.google.com/maps/search/?api=1&amp;query=Alderman+Rd+%26+McCormick+Rd+Charlottesville+VA" target="_blank" rel="noopener">Open map</a></p>
       </div>
 
       <div class="card">
         <div class="card-head">
-          <h2>Open requests</h2>
-          <label class="inline-select">
-            <span>I am</span>
-            <select id="driver-id">
-              <option>Driver A</option>
-              <option>Driver B</option>
-              <option>Driver C</option>
-            </select>
-          </label>
+          <h2 id="list-title">Open H2B requests</h2>
+          <span class="muted" id="list-count"></span>
         </div>
         <ul class="trips" id="open-list"></ul>
       </div>
 
       <div class="card">
-        <div class="card-head">
-          <h2>Completed trips</h2>
-          <span class="muted" id="done-summary"></span>
-        </div>
-        <ul class="done" id="done-list"></ul>
+        <details>
+          <summary class="done-summary"><span>Finished requests</span> <span class="muted" id="done-summary"></span></summary>
+          <ul class="done" id="done-list"></ul>
+        </details>
       </div>
     </section>
 

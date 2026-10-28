@@ -2,47 +2,40 @@
   "use strict";
 
   // All data below is invented for the demo.
-  var STORAGE_KEY = "rideBoardDemo.v1";
-  var PICKUPS = ["Gate 3", "Lot B", "Staff Housing C", "Maintenance Yard", "Clubhouse Dock", "Range Shed", "North Lot"];
+  var STORAGE_KEY = "farmingtonAppDemo.v2";
   var EVENTS = ["Fall Classic", "Homecoming Game", "Night Game 7"];
-  var VEHICLES = ["Van 1", "Van 2"];
   var MIN = 60000;
 
   var state;
   var els = {};
+  var resetTimer;
 
   // ---------- State ----------
 
-  function uid() {
-    return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
-  }
+  function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
 
   function seedData() {
     var now = Date.now();
     var ago = function (m) { return now - m * MIN; };
     var ev = EVENTS[0];
+    var req = function (o) { o.id = uid(); o.log = o.log || []; o.taken = o.taken || 0; return o; };
     return {
       view: "request",
       reqType: "h2b",
+      driverList: "h2b",
       currentEvent: ev,
       driver: "Driver A",
       requests: [
-        { id: uid(), type: "stadium", event: ev, direction: "dropoff", vehicle: "Van 1", headCount: 12, eta: 10,
-          status: "done", createdAt: ago(95), startedAt: ago(90), completedAt: ago(78), driver: "Driver A" },
-        { id: uid(), type: "stadium", event: ev, direction: "dropoff", vehicle: "Van 2", headCount: 9, eta: 15,
-          status: "done", createdAt: ago(92), startedAt: ago(85), completedAt: ago(71), driver: "Driver B" },
-        { id: uid(), type: "h2b", pickup: "Staff Housing C", headCount: 6, note: "Early shift crew",
-          status: "done", createdAt: ago(70), startedAt: ago(66), completedAt: ago(57), driver: "Driver C" },
-        { id: uid(), type: "stadium", event: ev, direction: "pickup", vehicle: "Van 1", headCount: 8, eta: 5,
-          status: "done", createdAt: ago(30), startedAt: ago(26), completedAt: ago(14), driver: "Driver A" },
-        { id: uid(), type: "stadium", event: ev, direction: "pickup", vehicle: "Van 2", headCount: 7, eta: 12,
-          status: "active", createdAt: ago(9), startedAt: ago(6), driver: "Driver B" },
-        { id: uid(), type: "h2b", pickup: "Gate 3", headCount: 4, note: "",
-          status: "waiting", createdAt: ago(5) },
-        { id: uid(), type: "stadium", event: ev, direction: "pickup", vehicle: "Van 1", headCount: 6, eta: 20,
-          status: "waiting", createdAt: ago(3) },
-        { id: uid(), type: "h2b", pickup: "Lot B", headCount: 3, note: "Two bag carts",
-          status: "waiting", createdAt: ago(1) }
+        req({ type: "game", event: ev, direction: "dropoff", headCount: 12, taken: 12, createdAt: ago(95),
+          log: [{ driver: "Driver A", n: 12, at: ago(80) }] }),
+        req({ type: "game", event: ev, direction: "pickup", headCount: 5, taken: 2, createdAt: ago(20),
+          log: [{ driver: "Driver B", n: 2, at: ago(6) }] }),
+        req({ type: "game", event: ev, direction: "pickup", headCount: 3, createdAt: ago(10) }),
+        req({ type: "h2b", headCount: 6, taken: 6, note: "Early shift crew", createdAt: ago(70),
+          log: [{ driver: "Driver B", n: 6, at: ago(60) }] }),
+        req({ type: "h2b", headCount: 4, taken: 1, note: "", createdAt: ago(12),
+          log: [{ driver: "Driver A", n: 1, at: ago(3) }] }),
+        req({ type: "h2b", headCount: 3, note: "Two bag carts", createdAt: ago(2) })
       ]
     };
   }
@@ -76,50 +69,32 @@
     return new Date(ts).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
   }
 
-  function duration(ms) {
-    var s = Math.max(0, Math.floor(ms / 1000));
-    var h = Math.floor(s / 3600);
-    var m = Math.floor((s % 3600) / 60);
-    var sec = s % 60;
-    var pad = function (n) { return (n < 10 ? "0" : "") + n; };
-    return (h ? h + ":" + pad(m) : m) + ":" + pad(sec);
-  }
-
-  function labeledDuration(ms) {
-    var s = Math.max(0, Math.round(ms / 1000));
-    var h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
-    return (h ? h + "h " : "") + m + "m " + (sec < 10 ? "0" : "") + sec + "s";
-  }
-
-  function shortDuration(ms) {
-    var m = Math.round(ms / MIN);
-    if (m < 1) return "< 1 min";
-    if (m < 60) return m + " min";
-    return Math.floor(m / 60) + " h " + (m % 60) + " min";
+  function ago(ts) {
+    var m = Math.round((Date.now() - ts) / MIN);
+    return m < 1 ? "just now" : m + " min ago";
   }
 
   function people(n) { return n + (n === 1 ? " person" : " people"); }
+  function remaining(r) { return Math.max(0, r.headCount - r.taken); }
+  function isDone(r) { return remaining(r) === 0; }
 
   function title(r) {
-    if (r.type === "h2b") return "H2B ride from " + r.pickup;
-    return (r.direction === "dropoff" ? "Drop off to stadium" : "Pickup after game") + " · " + r.vehicle;
+    if (r.type === "h2b") return "H2B ride";
+    return r.direction === "dropoff" ? "To the stadium" : "Back after game";
   }
 
   function meta(r) {
     var parts = [];
-    if (r.type === "stadium") parts.push(r.event, "ETA " + r.eta + " min");
-    parts.push("Created " + clockTime(r.createdAt));
-    if (r.driver && r.status !== "waiting") parts.push(r.driver);
+    if (r.type === "game") parts.push(r.event);
+    parts.push("Requested " + clockTime(r.createdAt));
     return parts.join(" · ");
   }
-
-  var STATUS_LABEL = { waiting: "Waiting", active: "In progress", done: "Completed" };
 
   function toast(msg) {
     els.toast.textContent = msg;
     els.toast.classList.add("show");
     clearTimeout(toast.t);
-    toast.t = setTimeout(function () { els.toast.classList.remove("show"); }, 2200);
+    toast.t = setTimeout(function () { els.toast.classList.remove("show"); }, 2600);
   }
 
   function fillSelect(select, values, selected) {
@@ -136,167 +111,129 @@
     return Number(input.value);
   }
 
+  function find(id) {
+    for (var i = 0; i < state.requests.length; i++) if (state.requests[i].id === id) return state.requests[i];
+    return null;
+  }
+
   // ---------- Rendering ----------
 
   function renderView() {
     document.querySelectorAll(".view-toggle button").forEach(function (b) {
-      var on = b.dataset.view === state.view;
-      b.setAttribute("aria-selected", on ? "true" : "false");
+      b.setAttribute("aria-selected", b.dataset.view === state.view ? "true" : "false");
     });
     els.viewRequest.hidden = state.view !== "request";
     els.viewDriver.hidden = state.view !== "driver";
 
-    document.querySelectorAll(".type-toggle button").forEach(function (b) {
+    document.querySelectorAll("#view-request .type-toggle button").forEach(function (b) {
       b.setAttribute("aria-checked", b.dataset.type === state.reqType ? "true" : "false");
     });
     els.formH2b.hidden = state.reqType !== "h2b";
-    els.formStadium.hidden = state.reqType !== "stadium";
+    els.formGame.hidden = state.reqType !== "game";
+    els.sent.hidden = true;
+
+    document.querySelectorAll(".driver-toggle button").forEach(function (b) {
+      b.setAttribute("aria-checked", b.dataset.list === state.driverList ? "true" : "false");
+    });
   }
 
-  function itemHTML(r, opts) {
-    var html = '<li class="item ' + r.status + '" data-id="' + r.id + '">' +
+  function itemHTML(r) {
+    var left = remaining(r);
+    var html = '<li class="item ' + (r.taken ? "active" : "waiting") + '" data-id="' + r.id + '">' +
       '<div class="item-top"><div>' +
-      '<div class="item-title"><span class="count-pill">' + r.headCount + '</span>' + esc(title(r)) + '</div>' +
+      '<div class="item-title"><span class="count-pill">' + left + '</span>' + esc(title(r)) + '</div>' +
       '<div class="item-meta">' + esc(meta(r)) + '</div>' +
-      '</div><span class="badge ' + r.status + '">' + STATUS_LABEL[r.status] + '</span></div>';
+      '</div><span class="badge ' + (r.taken ? "active" : "waiting") + '">' +
+      (r.taken ? "Partly done" : "Waiting") + '</span></div>';
+    html += '<div class="item-meta left-chip">' + left + " of " + r.headCount + " still to go</div>";
     if (r.note) html += '<div class="item-note">' + esc(r.note) + '</div>';
-    if (opts && opts.actions) {
-      if (r.status === "active") {
-        html += '<div class="timer" data-timer="' + r.startedAt + '">' + duration(Date.now() - r.startedAt) + '</div>' +
-          '<div class="trip-actions"><button type="button" class="btn btn-complete btn-block" data-action="complete">Complete trip</button></div>';
-      } else {
-        html += '<div class="trip-actions"><button type="button" class="btn btn-start btn-block" data-action="start">Start trip</button></div>';
-      }
-    }
+    var last = r.log[r.log.length - 1];
+    if (last) html += '<div class="item-log">' + esc(last.driver) + " took " + last.n + ", " + ago(last.at) + "</div>";
+    var verb = r.type === "game" && r.direction === "dropoff" ? "Dropped off" : "Picked up";
+    html += '<div class="pick-row"><div class="stepper" data-stepper>' +
+      '<button type="button" data-step="-1" aria-label="One fewer">−</button>' +
+      '<input type="number" inputmode="numeric" min="1" max="' + left + '" value="' + left + '" aria-label="People just taken">' +
+      '<button type="button" data-step="1" aria-label="One more">+</button></div>' +
+      '<button type="button" class="btn btn-start" data-action="take">' + verb + '</button></div>';
     return html + "</li>";
   }
 
-  function renderBoard() {
-    var list = state.requests.slice().sort(function (a, b) {
-      var order = { active: 0, waiting: 1, done: 2 };
-      return order[a.status] - order[b.status] || b.createdAt - a.createdAt;
+  function listRequests() {
+    return state.requests.filter(function (r) {
+      if (r.type !== state.driverList) return false;
+      return r.type !== "game" || r.event === state.currentEvent;
     });
-    var open = list.filter(function (r) { return r.status !== "done"; }).length;
-    els.boardCount.textContent = open + " open · " + (list.length - open) + " done";
-    els.boardList.innerHTML = list.length
-      ? list.map(function (r) { return itemHTML(r); }).join("")
-      : '<li class="empty">No requests yet.</li>';
   }
 
   function renderDriver() {
     els.driverId.value = state.driver;
+    var isGame = state.driverList === "game";
+    els.gamePanel.hidden = !isGame;
+    els.listTitle.textContent = isGame ? "Open game requests" : "Open H2B requests";
 
-    var open = state.requests.filter(function (r) { return r.status !== "done"; })
-      .sort(function (a, b) {
-        return (a.status === "active" ? 0 : 1) - (b.status === "active" ? 0 : 1) || a.createdAt - b.createdAt;
-      });
+    var all = listRequests();
+    var open = all.filter(function (r) { return !isDone(r); })
+      .sort(function (a, b) { return a.createdAt - b.createdAt; });
+    var done = all.filter(isDone).sort(function (a, b) { return b.createdAt - a.createdAt; });
+
+    els.listCount.textContent = open.length + " open";
     els.openList.innerHTML = open.length
-      ? open.map(function (r) { return itemHTML(r, { actions: true }); }).join("")
-      : '<li class="empty">No open requests. Nice work.</li>';
+      ? open.map(itemHTML).join("")
+      : '<li class="empty">Nothing waiting. Nice work.</li>';
 
-    var done = state.requests.filter(function (r) { return r.status === "done"; })
-      .sort(function (a, b) { return b.completedAt - a.completedAt; });
-    var totalPeople = done.reduce(function (s, r) { return s + r.headCount; }, 0);
-    els.doneSummary.textContent = done.length + " trips · " + people(totalPeople);
+    els.doneSummary.textContent = done.length;
     els.doneList.innerHTML = done.length ? done.map(function (r) {
-      return '<li class="item done"><div class="done-row"><div>' +
-        '<div class="item-title"><span class="count-pill">' + r.headCount + '</span>' + esc(title(r)) + '</div>' +
-        '<div class="item-meta">' + esc((r.type === "stadium" ? r.event + " · " : "") +
-          "Done " + clockTime(r.completedAt) + (r.driver ? " · " + r.driver : "")) + '</div>' +
-        '</div><div class="done-dur">' + duration(r.completedAt - r.startedAt) + '</div></div></li>';
-    }).join("") : '<li class="empty">No completed trips yet.</li>';
+      return '<li class="item done"><div class="item-title"><span class="count-pill">' + r.headCount + '</span>' +
+        esc(title(r)) + '</div><div class="item-meta">' + esc(meta(r)) + '</div></li>';
+    }).join("") : '<li class="empty">None yet.</li>';
 
-    renderStadium();
+    if (isGame) renderGame();
   }
 
-  function renderStadium() {
+  // One shared number for every driver: it only goes down when someone logs people.
+  function renderGame() {
     fillSelect(els.currentEvent, EVENTS, state.currentEvent);
-    var ev = state.currentEvent;
-    var totals = { drop: 0, pick: 0 };
-    var cards = VEHICLES.map(function (v) {
-      var trips = state.requests.filter(function (r) {
-        return r.type === "stadium" && r.event === ev && r.vehicle === v;
-      });
-      var drop = 0, pick = 0;
-      trips.forEach(function (r) {
-        if (r.status !== "done") return;
-        if (r.direction === "dropoff") drop += r.headCount; else pick += r.headCount;
-      });
-      totals.drop += drop;
-      totals.pick += pick;
-
-      // Current ETA: the most recent open request for this van, counted down from when it was made.
-      var next = trips.filter(function (r) { return r.status !== "done"; })
-        .sort(function (a, b) { return b.createdAt - a.createdAt; })[0];
-      var etaHTML = '<span class="vehicle-eta none">No open trip</span>';
-      if (next) {
-        var remaining = Math.ceil((next.createdAt + next.eta * MIN - Date.now()) / MIN);
-        etaHTML = '<span class="vehicle-eta">' + (remaining > 0 ? "ETA " + remaining + " min" : "Due now") + "</span>";
-      }
-
-      return '<div class="vehicle"><h3>' + v + etaHTML + '</h3><dl>' +
-        '<dt>Dropped off</dt><dd>' + drop + '</dd>' +
-        '<dt>Picked up</dt><dd>' + pick + '</dd>' +
-        '<dt>Left to pick up</dt><dd class="v-left">' + Math.max(0, drop - pick) + '</dd>' +
-        '</dl></div>';
+    var drop = 0, pick = 0, left = 0;
+    state.requests.forEach(function (r) {
+      if (r.type !== "game" || r.event !== state.currentEvent) return;
+      if (r.direction === "dropoff") drop += r.taken;
+      else { pick += r.taken; left += remaining(r); }
     });
-
-    els.dropTotal.textContent = totals.drop;
-    els.pickTotal.textContent = totals.pick;
-    els.leftTotal.textContent = Math.max(0, totals.drop - totals.pick);
-    els.vehicleGrid.innerHTML = cards.join("");
+    els.dropTotal.textContent = drop;
+    els.pickTotal.textContent = pick;
+    els.leftTotal.textContent = left;
   }
 
   function render() {
     renderView();
-    renderBoard();
     renderDriver();
-  }
-
-  // Live timers and ETA countdowns, updated without re-rendering the lists.
-  function tick() {
-    document.querySelectorAll("[data-timer]").forEach(function (el) {
-      el.textContent = duration(Date.now() - Number(el.dataset.timer));
-    });
-    if (!els.viewDriver.hidden && new Date().getSeconds() === 0) renderStadium();
   }
 
   // ---------- Actions ----------
 
   function addRequest(r) {
     r.id = uid();
-    r.status = "waiting";
+    r.taken = 0;
+    r.log = [];
     r.createdAt = Date.now();
     state.requests.push(r);
     save();
-    render();
-    toast("Added to board: " + people(r.headCount));
+    renderDriver();
+    els.sent.textContent = "Sent to the " + (r.type === "h2b" ? "H2B" : "Game") + " list: " + people(r.headCount) + ". Drivers can see it now.";
+    els.sent.hidden = false;
+    toast("Sent to drivers");
   }
 
-  function startTrip(id) {
+  function take(id, n) {
     var r = find(id);
-    if (!r || r.status !== "waiting") return;
-    r.status = "active";
-    r.startedAt = Date.now();
-    r.driver = state.driver;
+    if (!r || isDone(r)) return;
+    n = Math.min(n, remaining(r));
+    if (n < 1) return;
+    r.taken += n;
+    r.log.push({ driver: state.driver, n: n, at: Date.now() });
     save();
-    render();
-    toast("Trip started");
-  }
-
-  function completeTrip(id) {
-    var r = find(id);
-    if (!r || r.status !== "active") return;
-    r.status = "done";
-    r.completedAt = Date.now();
-    save();
-    render();
-    toast("Trip done: " + people(r.headCount) + " in " + shortDuration(r.completedAt - r.startedAt));
-  }
-
-  function find(id) {
-    for (var i = 0; i < state.requests.length; i++) if (state.requests[i].id === id) return state.requests[i];
-    return null;
+    renderDriver();
+    toast(n + " logged. " + remaining(r) + " left on this request.");
   }
 
   // ---------- Wiring ----------
@@ -306,9 +243,11 @@
       viewRequest: $("#view-request"),
       viewDriver: $("#view-driver"),
       formH2b: $("#form-h2b"),
-      formStadium: $("#form-stadium"),
-      boardList: $("#board-list"),
-      boardCount: $("#board-count"),
+      formGame: $("#form-game"),
+      sent: $("#sent-note"),
+      gamePanel: $("#game-panel"),
+      listTitle: $("#list-title"),
+      listCount: $("#list-count"),
       openList: $("#open-list"),
       doneList: $("#done-list"),
       doneSummary: $("#done-summary"),
@@ -317,101 +256,86 @@
       leftTotal: $("#left-total"),
       dropTotal: $("#drop-total"),
       pickTotal: $("#pick-total"),
-      vehicleGrid: $("#vehicle-grid"),
       toast: $("#toast")
     };
 
     state = load();
-
-    fillSelect(els.formH2b.elements.pickup, PICKUPS, PICKUPS[0]);
-    fillSelect(els.formStadium.elements.event, EVENTS, state.currentEvent);
+    fillSelect(els.formGame.elements.event, EVENTS, state.currentEvent);
 
     document.querySelectorAll(".view-toggle button").forEach(function (b) {
       b.addEventListener("click", function () {
-        state.view = b.dataset.view;
-        save();
-        renderView();
-        if (state.view === "driver") renderStadium();
-        window.scrollTo(0, 0);
+        state.view = b.dataset.view; save(); renderView(); renderDriver(); window.scrollTo(0, 0);
       });
     });
 
-    document.querySelectorAll(".type-toggle button").forEach(function (b) {
-      b.addEventListener("click", function () {
-        state.reqType = b.dataset.type;
-        save();
-        renderView();
-      });
+    document.querySelectorAll("#view-request .type-toggle button").forEach(function (b) {
+      b.addEventListener("click", function () { state.reqType = b.dataset.type; save(); renderView(); });
     });
 
-    document.querySelectorAll("[data-stepper]").forEach(function (wrap) {
-      var input = $("input", wrap);
-      wrap.addEventListener("click", function (e) {
-        var btn = e.target.closest("button[data-step]");
-        if (!btn) return;
-        input.value = (parseInt(input.value, 10) || 0) + Number(btn.dataset.step);
-        clampInput(input);
-      });
-      input.addEventListener("change", function () { clampInput(input); });
+    document.querySelectorAll(".driver-toggle button").forEach(function (b) {
+      b.addEventListener("click", function () { state.driverList = b.dataset.list; save(); renderView(); renderDriver(); });
+    });
+
+    // Steppers, including the ones created inside the driver list.
+    document.addEventListener("click", function (e) {
+      var btn = e.target.closest("[data-stepper] button[data-step]");
+      if (!btn) return;
+      var input = $("input", btn.closest("[data-stepper]"));
+      input.value = (parseInt(input.value, 10) || 0) + Number(btn.dataset.step);
+      clampInput(input);
+    });
+    document.addEventListener("change", function (e) {
+      if (e.target.matches("[data-stepper] input")) clampInput(e.target);
     });
 
     els.formH2b.addEventListener("submit", function (e) {
       e.preventDefault();
       var f = els.formH2b.elements;
-      addRequest({
-        type: "h2b",
-        pickup: f.pickup.value,
-        headCount: clampInput(f.headCount),
-        note: f.note.value.trim().slice(0, 80)
-      });
+      addRequest({ type: "h2b", headCount: clampInput(f.headCount), note: f.note.value.trim().slice(0, 80) });
       f.note.value = "";
     });
 
-    els.formStadium.addEventListener("submit", function (e) {
+    els.formGame.addEventListener("submit", function (e) {
       e.preventDefault();
-      var f = els.formStadium.elements;
-      addRequest({
-        type: "stadium",
-        event: f.event.value,
-        direction: f.direction.value,
-        vehicle: f.vehicle.value,
-        headCount: clampInput(f.headCount),
-        eta: clampInput(f.eta)
-      });
+      var f = els.formGame.elements;
+      addRequest({ type: "game", event: f.event.value, direction: f.direction.value, headCount: clampInput(f.headCount) });
     });
 
     els.openList.addEventListener("click", function (e) {
-      var btn = e.target.closest("button[data-action]");
+      var btn = e.target.closest("button[data-action='take']");
       if (!btn) return;
-      var id = btn.closest("[data-id]").dataset.id;
-      if (btn.dataset.action === "start") startTrip(id); else completeTrip(id);
+      var li = btn.closest("[data-id]");
+      take(li.dataset.id, parseInt($("input", li).value, 10) || 0);
     });
 
-    els.driverId.addEventListener("change", function () {
-      state.driver = els.driverId.value;
-      save();
-    });
+    els.driverId.addEventListener("change", function () { state.driver = els.driverId.value; save(); });
 
     els.currentEvent.addEventListener("change", function () {
-      state.currentEvent = els.currentEvent.value;
-      save();
-      renderStadium();
+      state.currentEvent = els.currentEvent.value; save(); renderDriver();
     });
 
-    $("#reset-btn").addEventListener("click", function () {
-      if (!confirm("Reset the demo? This clears your changes and restores the sample requests.")) return;
+    var resetBtn = $("#reset-btn");
+    resetBtn.addEventListener("click", function () {
+      if (resetBtn.dataset.armed !== "1") {
+        resetBtn.dataset.armed = "1";
+        resetBtn.textContent = "Tap again to reset";
+        resetTimer = setTimeout(function () { resetBtn.dataset.armed = ""; resetBtn.textContent = "Reset demo"; }, 4000);
+        return;
+      }
+      clearTimeout(resetTimer);
+      resetBtn.dataset.armed = "";
+      resetBtn.textContent = "Reset demo";
       var view = state.view;
       state = seedData();
       state.view = view;
       save();
-      fillSelect(els.formStadium.elements.event, EVENTS, state.currentEvent);
+      fillSelect(els.formGame.elements.event, EVENTS, state.currentEvent);
       render();
       window.scrollTo(0, 0);
       toast("Demo reset to sample data");
     });
 
     render();
-    setInterval(tick, 1000);
   }
 
   document.addEventListener("DOMContentLoaded", init);
