@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0f3d2e">
+  <title>Farmington App</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="demo-banner" role="note">DEMO with invented data. Not connected to any club system.</div>
+
+  <header class="app-header">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">FA</span>
+      <h1>Farmington <span class="brand-sub">App</span></h1>
+    </div>
+    <span class="sync-status" id="sync-status" role="status" aria-live="polite">Starting...</span>
+    <nav class="view-toggle" role="tablist" aria-label="Choose view">
+      <button type="button" role="tab" id="tab-request" aria-controls="view-request" data-view="request">Request</button>
+      <button type="button" role="tab" id="tab-driver" aria-controls="view-driver" data-view="driver">Driver</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- REQUEST VIEW (members and workers) -->
+    <section id="view-request" class="view" role="tabpanel" aria-labelledby="tab-request">
+      <div class="card">
+        <h2>New ride request</h2>
+        <div class="type-toggle" role="radiogroup" aria-label="Request type">
+          <button type="button" role="radio" data-type="h2b">H2B ride</button>
+          <button type="button" role="radio" data-type="game">Game ride</button>
+        </div>
+
+        <form id="form-h2b" class="req-form" novalidate>
+          <div class="field">
+            <span id="h2b-count-label">How many people</span>
+            <div class="stepper" data-stepper>
+              <button type="button" data-step="-1" aria-label="Fewer people">−</button>
+              <input type="number" name="headCount" inputmode="numeric" min="1" max="60" value="4" aria-labelledby="h2b-count-label">
+              <button type="button" data-step="1" aria-label="More people">+</button>
+            </div>
+          </div>
+          <label class="field">
+            <span>Note <em>(optional)</em></span>
+            <input type="text" name="note" maxlength="80" placeholder="e.g. Bring the bag cart" autocomplete="off">
+          </label>
+          <p class="hint">Numbers only. Do not enter names.</p>
+          <button type="submit" class="btn btn-primary btn-block">Send to drivers</button>
+        </form>
+
+        <form id="form-game" class="req-form" novalidate hidden>
+          <div class="place">
+            <div class="place-label">Game pickup spot</div>
+            <div class="place-name">Alderman Road and McCormick Road crossroad</div>
+            <a class="place-link" href="https://www.google.com/maps/search/?api=1&amp;query=Alderman+Rd+%26+McCormick+Rd+Charlottesville+VA" target="_blank" rel="noopener">Open map</a>
+          </div>
+          <label class="field">
+            <span>Game</span>
+            <select name="event" required></select>
+          </label>
+          <fieldset class="field">
+            <legend>Direction</legend>
+            <div class="seg">
+              <label><input type="radio" name="direction" value="dropoff" checked><span>To the stadium</span></label>
+              <label><input type="radio" name="direction" value="pickup"><span>Back after game</span></label>
+            </div>
+          </fieldset>
+          <div class="field">
+            <span id="st-count-label">How many people</span>
+            <div class="stepper" data-stepper>
+              <button type="button" data-step="-1" aria-label="Fewer people">−</button>
+              <input type="number" name="headCount" inputmode="numeric" min="1" max="60" value="6" aria-labelledby="st-count-label">
+              <button type="button" data-step="1" aria-label="More people">+</button>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary btn-block">Send to drivers</button>
+        </form>
+        <p class="sent" id="sent-note" hidden></p>
+      </div>
+    </section>
+
+    <!-- DRIVER VIEW -->
+    <section id="view-driver" class="view" role="tabpanel" aria-labelledby="tab-driver" hidden>
+      <div class="card">
+        <div class="card-head">
+          <div class="type-toggle driver-toggle" role="radiogroup" aria-label="List">
+            <button type="button" role="radio" data-list="h2b">H2B</button>
+            <button type="button" role="radio" data-list="game">Game</button>
+          </div>
+          <label class="inline-select">
+            <span>I am</span>
+            <select id="driver-id">
+              <option>Driver A</option>
+              <option>Driver B</option>
+            </select>
+          </label>
+        </div>
+      </div>
+
+      <div class="card stadium-panel" id="game-panel" aria-labelledby="stadium-title">
+        <div class="card-head">
+          <h2 id="stadium-title">Game headcount</h2>
+          <label class="inline-select">
+            <span class="sr-only">Current game</span>
+            <select id="current-event"></select>
+          </label>
+        </div>
+        <div class="left-big">
+          <div class="left-num" id="left-total">0</div>
+          <div class="left-label">left to pick up</div>
+        </div>
+        <div class="stat-row">
+          <div class="stat"><div class="stat-num" id="drop-total">0</div><div class="stat-label">Dropped off</div></div>
+          <div class="stat"><div class="stat-num" id="pick-total">0</div><div class="stat-label">Picked up</div></div>
+        </div>
+        <p class="place-inline">Pickup spot: Alderman Road and McCormick Road crossroad. <a class="place-link" href="https://www.google.com/maps/search/?api=1&amp;query=Alderman+Rd+%26+McCormick+Rd+Charlottesville+VA" target="_blank" rel="noopener">Open map</a></p>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h2 id="list-title">Open H2B requests</h2>
+          <span class="muted" id="list-count"></span>
+        </div>
+        <ul class="trips" id="open-list"></ul>
+      </div>
+
+      <div class="card">
+        <details>
+          <summary class="done-summary"><span>Finished requests</span> <span class="muted" id="done-summary"></span></summary>
+          <ul class="done" id="done-list"></ul>
+        </details>
+      </div>
+    </section>
+
+    <section class="card about" aria-labelledby="about-title">
+      <details>
+        <summary><h2 id="about-title">About this demo</h2></summary>
+        <p>This is a free prototype that shows what a custom app could do for the transportation team. All drivers, events and numbers are invented. When live sync is set up, phones share this invented data through a free test database; otherwise it stays in this browser.</p>
+        <p><strong>The full version adds:</strong></p>
+        <ul>
+          <li>Department tabs: transportation, food and beverage, events, and sport</li>
+          <li>Offline use with automatic sync when the connection returns</li>
+          <li>Manager logins with approvals and ride assignment to drivers</li>
+          <li>Beverage orders</li>
+          <li>Tables</li>
+          <li>Contacts</li>
+        </ul>
+      </details>
+      <button type="button" class="btn btn-ghost btn-block" id="reset-btn">Reset demo</button>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <!-- Order matters: settings, shared rules, the two stores, then the screens. -->
+  <script src="firebase-config.js"></script>
+  <script src="logic.js"></script>
+  <script src="store-local.js"></script>
+  <script src="store-firebase.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
